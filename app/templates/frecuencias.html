@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 data-i18n="freq_title">Frecuencias</h1>
+<p data-i18n="freq_subtitle">Analisis estadistico de cada numero del 1 al 25</p>
+
+<div class="card">
+  <h3 data-i18n="freq_map_title">Mapa de Frecuencias - 1 al 25</h3>
+  <div id="frecuenciasLegend"></div>
+  <div id="heatmap" class="grid-5"></div>
+</div>
+
+<br />
+
+<div class="split-2">
+  <div class="card">
+    <h3 data-i18n="freq_top_hot">Top 5 Calientes</h3>
+    <div id="hotRows"></div>
+  </div>
+  <div class="card">
+    <h3 data-i18n="freq_top_cold">Top 5 Frios</h3>
+    <div id="coldRows"></div>
+  </div>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="freq_pairs_title">Pares mas frecuentes</h3>
+  <div id="pairsWrap" class="tag-wrap"></div>
+</div>
+
+<script>
+  Object.assign(KA.i18n.es, {
+    freq_title: "Frecuencias",
+    freq_subtitle: "Analisis estadistico de cada numero del 1 al 25",
+    freq_map_title: "Mapa de Frecuencias - 1 al 25",
+    freq_top_hot: "Top 5 Calientes",
+    freq_top_cold: "Top 5 Frios",
+    freq_pairs_title: "Pares mas frecuentes",
+    freq_times: "{count} veces",
+    freq_load_error: "No se pudo cargar frecuencias",
+  });
+  Object.assign(KA.i18n.en, {
+    freq_title: "Frequencies",
+    freq_subtitle: "Statistical analysis for each number from 1 to 25",
+    freq_map_title: "Frequency Map - 1 to 25",
+    freq_top_hot: "Top 5 Hot",
+    freq_top_cold: "Top 5 Cold",
+    freq_pairs_title: "Most Frequent Pairs",
+    freq_times: "{count} times",
+    freq_load_error: "Could not load frequencies",
+  });
+
+  function rowBar(item, tone) {
+    return `
+      <div class="progress-row">
+        <span class="pill-num">${item.number}</span>
+        <div class="line-track"><div class="line-fill ${tone}" style="width:${item.pct}%"></div></div>
+        <span class="line-label">${item.count}x / ${item.pct}%</span>
+      </div>
+    `;
+  }
+
+  async function loadFrecuencias() {
+    const response = await fetch('/api/frecuencias_data');
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('freq_load_error'));
+      return;
+    }
+
+    const heat = document.getElementById('heatmap');
+    heat.innerHTML = data.heatmap.map(item => `
+      <div class="mini-card">
+        <div class="mini-title">${item.number}</div>
+        <div class="mini-sub">${KA.f('freq_times', { count: item.count })}</div>
+        <div class="line-track"><div class="line-fill gold" style="width:${item.pct}%"></div></div>
+        <small>${item.pct}%</small>
+      </div>
+    `).join('');
+
+    document.getElementById('hotRows').innerHTML = data.hot.map(x => rowBar(x, 'gold')).join('');
+    document.getElementById('coldRows').innerHTML = data.cold.map(x => rowBar(x, 'blue')).join('');
+
+    document.getElementById('pairsWrap').innerHTML = data.pairs
+      .map(p => `<span class="tag">${p.pair} - <b>${p.count}x</b></span>`)
+      .join('');
+  }
+
+  loadFrecuencias();
+  KA.renderLegend('frecuenciasLegend');
+  document.addEventListener('ka:language-changed', () => {
+    loadFrecuencias();
+    KA.renderLegend('frecuenciasLegend');
+  });
+</script>
+{% endblock %}

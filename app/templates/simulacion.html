@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 data-i18n="sim_title">Simulacion Monte Carlo</h1>
+<p data-i18n="sim_subtitle">Estima probabilidades reales mediante miles de iteraciones</p>
+
+<div class="split-2">
+  <div class="card">
+    <h3 data-i18n="sim_config">Configuracion</h3>
+    <label data-i18n="sim_ticket_numbers">Numeros del ticket (14)</label>
+    <input id="simNumbers" type="text" value="1,2,3,4,5,6,7,8,9,10,11,12,13,14" />
+    <label data-i18n="sim_iterations">Iteraciones</label>
+    <input id="simIters" type="number" value="10000" min="1000" max="200000" step="1000" />
+    <button class="btn-modern" onclick="runSim()" data-i18n="sim_start">Iniciar</button>
+  </div>
+
+  <div class="card">
+    <h3 data-i18n="sim_summary_title">Resumen</h3>
+    <p id="avgHits">-</p>
+    <p id="peakHits">-</p>
+    <p id="prob14">-</p>
+  </div>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="sim_distribution_title">Distribucion de Resultados</h3>
+  <canvas id="simChart" height="120"></canvas>
+</div>
+
+<script>
+  Object.assign(KA.i18n.es, {
+    sim_title: "Simulacion Monte Carlo",
+    sim_subtitle: "Estima probabilidades reales mediante miles de iteraciones",
+    sim_config: "Configuracion",
+    sim_ticket_numbers: "Numeros del ticket (14)",
+    sim_iterations: "Iteraciones",
+    sim_start: "Iniciar",
+    sim_summary_title: "Resumen",
+    sim_distribution_title: "Distribucion de Resultados",
+    sim_avg_hits: "Aciertos promedio: {value}",
+    sim_peak_hits: "Pico mas frecuente: {hits} aciertos ({pct}%)",
+    sim_prob14: "Prob. 14/14: {value}%",
+    sim_error: "No se pudo simular",
+  });
+  Object.assign(KA.i18n.en, {
+    sim_title: "Monte Carlo Simulation",
+    sim_subtitle: "Estimate real probabilities with thousands of iterations",
+    sim_config: "Configuration",
+    sim_ticket_numbers: "Ticket numbers (14)",
+    sim_iterations: "Iterations",
+    sim_start: "Start",
+    sim_summary_title: "Summary",
+    sim_distribution_title: "Result Distribution",
+    sim_avg_hits: "Average hits: {value}",
+    sim_peak_hits: "Most frequent peak: {hits} hits ({pct}%)",
+    sim_prob14: "Prob. 14/14: {value}%",
+    sim_error: "Simulation failed",
+  });
+
+  let simChart = null;
+
+  async function runSim() {
+    const play = document.getElementById('simNumbers').value.split(',').map(x => x.trim()).filter(Boolean);
+
+    const response = await fetch('/api/evaluate_play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ play })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('sim_error'));
+      return;
+    }
+
+    const entries = Object.entries(data).map(([k, v]) => ({ k: parseInt(k, 10), v: Number(v) }));
+    const totalPctWeighted = entries.reduce((acc, e) => acc + (e.k * e.v), 0) / 100;
+    const peak = entries.sort((a, b) => b.v - a.v)[0];
+
+    document.getElementById('avgHits').innerText = KA.f('sim_avg_hits', { value: totalPctWeighted.toFixed(2) });
+    document.getElementById('peakHits').innerText = KA.f('sim_peak_hits', { hits: peak.k, pct: peak.v.toFixed(2) });
+    document.getElementById('prob14').innerText = KA.f('sim_prob14', { value: (data[14] || 0).toFixed(6) });
+
+    if (simChart) simChart.destroy();
+    simChart = new Chart(document.getElementById('simChart'), {
+      type: 'line',
+      data: {
+        labels: Object.keys(data),
+        datasets: [{ data: Object.values(data), borderColor: '#3f7db7', tension: 0.25 }]
+      },
+      options: { plugins: { legend: { display: false } } }
+    });
+  }
+
+  runSim();
+</script>
+{% endblock %}

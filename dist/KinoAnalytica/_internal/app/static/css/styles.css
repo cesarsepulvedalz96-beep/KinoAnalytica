@@ -1,0 +1,154 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f4f6fa;
+}
+
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: #1f2937;
+  position: fixed;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  margin-bottom: 40px;
+}
+
+.sidebar a {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  margin: 15px 0;
+}
+
+.sidebar a:hover {
+  color: white;
+}
+
+.main-content {
+  margin-left: 240px;
+  padding: 30px;
+}
+
+.cards {
+  display: flex;
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  flex: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #6b7280;
+}
+
+.card p {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.menu-section {
+  margin-top: 30px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.sidebar a {
+  display: block;
+  padding: 10px 8px;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.sidebar a:hover {
+  background: #1e293b;
+  padding-left: 12px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.input-modern {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  margin-top: 10px;
+  background: #1e293b;
+  color: white;
+  outline: none;
+  transition: 0.3s;
+}
+
+.input-modern:focus {
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+}
+
+.btn-modern {
+  padding: 10px 20px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(90deg, #8b5cf6, #22d3ee);
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-modern:hover {
+  transform: scale(1.05);
+}
+
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.modern-table th,
+.modern-table td {
+  padding: 12px;
+  border-bottom: 1px solid #334155;
+}
+
+.modern-table tr:hover {
+  background: #1e293b;
+}
+
+.btn-delete {
+  background: #ef4444;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-edit {
+  background: #3b82f6;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  margin-right: 6px;
+}

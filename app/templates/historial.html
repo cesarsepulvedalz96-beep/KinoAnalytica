@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 data-i18n="history_title">Historial</h1>
+<p data-i18n="history_subtitle">Registro de sorteos pasados</p>
+
+<div class="card">
+  <h3 data-i18n="history_add_manual">Agregar Sorteo Manual</h3>
+  <label data-i18n="history_date">Fecha</label>
+  <input id="drawDate" type="date" />
+
+  <p data-i18n="history_select_numbers">Selecciona 14 numeros ganadores:</p>
+  <div id="drawNumberGrid" class="number-grid"></div>
+  <p><span id="drawCount">0</span> / 14</p>
+
+  <button class="btn-modern" onclick="addDraw()" data-i18n="history_add_button">Agregar al Historial</button>
+  <button class="btn-edit" onclick="clearDrawSelection()" data-i18n="btn_clear">Limpiar</button>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="history_records">Registros</h3>
+  <div id="historialLegend"></div>
+  <button class="btn-delete" onclick="clearDrawRows()" style="float:right;" data-i18n="history_clear_all">Borrar Todo</button>
+  <table class="modern-table" id="drawTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th data-i18n="history_date">Fecha</th>
+        <th data-i18n="history_win_numbers">Numeros Ganadores</th>
+        <th data-i18n="history_sum">Suma</th>
+        <th data-i18n="history_action">Accion</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  Object.assign(KA.i18n.es, {
+    history_title: "Historial",
+    history_subtitle: "Registro de sorteos pasados",
+    history_add_manual: "Agregar Sorteo Manual",
+    history_date: "Fecha",
+    history_select_numbers: "Selecciona 14 numeros ganadores:",
+    history_add_button: "Agregar al Historial",
+    history_records: "Registros",
+    history_clear_all: "Borrar Todo",
+    history_win_numbers: "Numeros Ganadores",
+    history_sum: "Suma",
+    history_action: "Accion",
+    history_delete: "Borrar",
+    history_confirm_clear: "Borrar todo el historial de sorteos?",
+    history_save_error: "No se pudo guardar sorteo",
+    history_delete_error: "No se pudo eliminar",
+    history_clear_error: "No se pudo limpiar",
+  });
+  Object.assign(KA.i18n.en, {
+    history_title: "History",
+    history_subtitle: "Past draw records",
+    history_add_manual: "Add Manual Draw",
+    history_date: "Date",
+    history_select_numbers: "Select 14 winning numbers:",
+    history_add_button: "Add to History",
+    history_records: "Records",
+    history_clear_all: "Clear All",
+    history_win_numbers: "Winning Numbers",
+    history_sum: "Sum",
+    history_action: "Action",
+    history_delete: "Delete",
+    history_confirm_clear: "Clear all draw history?",
+    history_save_error: "Could not save draw",
+    history_delete_error: "Could not delete",
+    history_clear_error: "Could not clear",
+  });
+
+  const drawSet = new Set();
+
+  function renderDrawGrid() {
+    const grid = document.getElementById('drawNumberGrid');
+    grid.innerHTML = '';
+    for (let n = 1; n <= 25; n++) {
+      const active = drawSet.has(n) ? 'active-number' : '';
+      grid.insertAdjacentHTML('beforeend', `<button class="number-btn ${active}" onclick="toggleDrawNum(${n})">${n}</button>`);
+    }
+    document.getElementById('drawCount').innerText = drawSet.size;
+  }
+
+  function toggleDrawNum(n) {
+    if (drawSet.has(n)) drawSet.delete(n);
+    else if (drawSet.size < 14) drawSet.add(n);
+    renderDrawGrid();
+  }
+
+  function clearDrawSelection() {
+    drawSet.clear();
+    renderDrawGrid();
+  }
+
+  async function addDraw() {
+    const date = document.getElementById('drawDate').value;
+    const numbers = [...drawSet].sort((a, b) => a - b);
+
+    const response = await fetch('/api/draw_history/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, numbers })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('history_save_error'));
+      return;
+    }
+
+    clearDrawSelection();
+    await loadDrawRows();
+  }
+
+  async function deleteDraw(id) {
+    const response = await fetch('/api/draw_history/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('history_delete_error'));
+      return;
+    }
+    await loadDrawRows();
+  }
+
+  async function clearDrawRows() {
+    if (!(await KA.uiConfirm(KA.t('history_confirm_clear')))) return;
+    const response = await fetch('/api/draw_history/clear', { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('history_clear_error'));
+      return;
+    }
+    await loadDrawRows();
+  }
+
+  async function loadDrawRows() {
+    const response = await fetch('/api/draw_history');
+    const data = await response.json();
+    const tbody = document.querySelector('#drawTable tbody');
+
+    tbody.innerHTML = data.map((row, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${row.date}</td>
+        <td><div class="thermal-numbers" data-numbers="${row.numbers}">${row.numbers}</div></td>
+        <td>${row.total_sum}</td>
+        <td><button class="btn-delete" onclick="deleteDraw(${row.id})">${KA.t('history_delete')}</button></td>
+      </tr>
+    `).join('');
+    KA.renderThermalNodes(tbody);
+  }
+
+  renderDrawGrid();
+  loadDrawRows();
+  KA.renderLegend('historialLegend');
+  document.addEventListener('ka:language-changed', () => {
+    KA.renderLegend('historialLegend');
+    loadDrawRows();
+  });
+</script>
+{% endblock %}

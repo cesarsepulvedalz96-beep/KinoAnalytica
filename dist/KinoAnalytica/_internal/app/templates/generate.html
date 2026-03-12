@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 data-i18n="generate_title">Generar Juegos</h1>
+<p data-i18n="generate_subtitle">Selecciona 14 numeros de 25 para cada juego</p>
+
+<div class="cards">
+  <div class="card">
+    <h3><span data-i18n="generate_game">Juego</span> 1 <span id="count1" class="right-note">0/14</span></h3>
+    <div id="grid1" class="number-grid"></div>
+    <br />
+    <button class="btn-edit" onclick="clearGame(1)" data-i18n="btn_clear">Limpiar</button>
+    <button class="btn-modern" onclick="randomGame(1)" data-i18n="btn_random">Aleatorio</button>
+  </div>
+
+  <div class="card">
+    <h3><span data-i18n="generate_game">Juego</span> 2 <span id="count2" class="right-note">0/14</span></h3>
+    <div id="grid2" class="number-grid"></div>
+    <br />
+    <button class="btn-edit" onclick="clearGame(2)" data-i18n="btn_clear">Limpiar</button>
+    <button class="btn-modern" onclick="randomGame(2)" data-i18n="btn_random">Aleatorio</button>
+  </div>
+
+  <div class="card">
+    <h3><span data-i18n="generate_game">Juego</span> 3 <span id="count3" class="right-note">0/14</span></h3>
+    <div id="grid3" class="number-grid"></div>
+    <br />
+    <button class="btn-edit" onclick="clearGame(3)" data-i18n="btn_clear">Limpiar</button>
+    <button class="btn-modern" onclick="randomGame(3)" data-i18n="btn_random">Aleatorio</button>
+  </div>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="generate_smart_title">Generacion Inteligente</h3>
+  <button class="btn-modern" onclick="generateWithAI()" data-i18n="generate_ai">Generar con IA</button>
+  <button class="btn-edit" onclick="fillHot()" data-i18n="generate_hot">Numeros Calientes</button>
+  <button class="btn-edit" onclick="fillCold()" data-i18n="generate_cold">Frios</button>
+  <button class="btn-delete" onclick="clearAll()" data-i18n="btn_clear_all">Limpiar Todo</button>
+  <br /><br />
+  <p id="genInfo" data-i18n="generate_info_default">Selecciona 14 numeros en cada juego para el analisis.</p>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="generate_manual_title">Analisis Manual + 3 Opciones Nuevas</h3>
+  <div id="generateLegend"></div>
+  <input id="manualBasePlay" type="text" data-i18n-placeholder="generate_manual_placeholder" placeholder="Jugada manual (14 numeros separados por coma)" />
+  <button class="btn-modern" onclick="analyzeManualPlay()" data-i18n="generate_manual_action">Analizar y Generar 3 Opciones</button>
+  <p id="manualSummary" data-i18n="generate_manual_hint">Ingresa una jugada manual para analizar.</p>
+  <div id="manualOptionsWrap"></div>
+</div>
+
+<script>
+  Object.assign(KA.i18n.es, {
+    generate_title: "Generar Juegos",
+    generate_subtitle: "Selecciona 14 numeros de 25 para cada juego",
+    generate_game: "Juego",
+    btn_clear: "Limpiar",
+    btn_random: "Aleatorio",
+    btn_clear_all: "Limpiar Todo",
+    generate_smart_title: "Generacion Inteligente",
+    generate_ai: "Generar con IA",
+    generate_hot: "Numeros Calientes",
+    generate_cold: "Frios",
+    generate_info_default: "Selecciona 14 numeros en cada juego para el analisis.",
+    generate_info_loaded: "Juegos cargados desde modelo IA.",
+    generate_manual_title: "Analisis Manual + 3 Opciones Nuevas",
+    generate_manual_placeholder: "Jugada manual (14 numeros separados por coma)",
+    generate_manual_action: "Analizar y Generar 3 Opciones",
+    generate_manual_hint: "Ingresa una jugada manual para analizar.",
+    generate_manual_summary: "Manual: Confianza {confidence}% | Prob. de ser la mejor: {best}%",
+    generate_manual_option: "Opcion {index}",
+    generate_err_ai: "No se pudo generar IA",
+    generate_err_manual: "No se pudo analizar la jugada manual",
+    generate_use_game: "Usar en Juego {index}",
+    generate_prob_line: ">=10: {p10}% | >=11: {p11}% | >=12: {p12}%",
+    generate_confidence: "Confianza: {value}%",
+  });
+  Object.assign(KA.i18n.en, {
+    generate_title: "Generate Games",
+    generate_subtitle: "Select 14 numbers out of 25 for each game",
+    generate_game: "Game",
+    btn_clear: "Clear",
+    btn_random: "Random",
+    btn_clear_all: "Clear All",
+    generate_smart_title: "Smart Generation",
+    generate_ai: "Generate with AI",
+    generate_hot: "Hot Numbers",
+    generate_cold: "Cold Numbers",
+    generate_info_default: "Select 14 numbers in each game for analysis.",
+    generate_info_loaded: "Games loaded from AI model.",
+    generate_manual_title: "Manual Analysis + 3 New Options",
+    generate_manual_placeholder: "Manual play (14 comma-separated numbers)",
+    generate_manual_action: "Analyze and Generate 3 Options",
+    generate_manual_hint: "Enter a manual play to analyze.",
+    generate_manual_summary: "Manual: Confidence {confidence}% | Best-play chance: {best}%",
+    generate_manual_option: "Option {index}",
+    generate_err_ai: "AI generation failed",
+    generate_err_manual: "Manual play analysis failed",
+    generate_use_game: "Use in Game {index}",
+    generate_prob_line: ">=10: {p10}% | >=11: {p11}% | >=12: {p12}%",
+    generate_confidence: "Confidence: {value}%",
+  });
+
+  const games = { 1: new Set(), 2: new Set(), 3: new Set() };
+  let ranking = [];
+
+  function renderGrid(gameId) {
+    const wrap = document.getElementById(`grid${gameId}`);
+    wrap.innerHTML = '';
+
+    for (let n = 1; n <= 25; n++) {
+      const active = games[gameId].has(n) ? 'active-number' : '';
+      wrap.insertAdjacentHTML('beforeend', `<button class="number-btn ${active}" onclick="toggleNumber(${gameId}, ${n})">${n}</button>`);
+    }
+
+    document.getElementById(`count${gameId}`).innerText = `${games[gameId].size}/14`;
+  }
+
+  function toggleNumber(gameId, n) {
+    const set = games[gameId];
+    if (set.has(n)) set.delete(n);
+    else if (set.size < 14) set.add(n);
+    renderGrid(gameId);
+  }
+
+  function clearGame(gameId) {
+    games[gameId].clear();
+    renderGrid(gameId);
+  }
+
+  function randomGame(gameId) {
+    games[gameId].clear();
+    while (games[gameId].size < 14) games[gameId].add(1 + Math.floor(Math.random() * 25));
+    renderGrid(gameId);
+  }
+
+  function clearAll() {
+    clearGame(1); clearGame(2); clearGame(3);
+  }
+
+  async function generateWithAI() {
+    const response = await fetch('/api/generate');
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('generate_err_ai'));
+      return;
+    }
+
+    ranking = data.ranking || [];
+    data.plays.slice(0, 3).forEach((item, idx) => {
+      const gid = idx + 1;
+      games[gid] = new Set(item.play || []);
+      renderGrid(gid);
+    });
+
+    document.getElementById('genInfo').innerText = KA.t('generate_info_loaded');
+  }
+
+  async function loadRanking() {
+    const response = await fetch('/api/generate');
+    const data = await response.json();
+    ranking = data.ranking || [];
+  }
+
+  function fillHot() {
+    if (!ranking.length) return;
+    [1,2,3].forEach(gid => {
+      games[gid] = new Set(ranking.slice(0, 14));
+      renderGrid(gid);
+    });
+  }
+
+  function fillCold() {
+    if (!ranking.length) return;
+    [1,2,3].forEach(gid => {
+      games[gid] = new Set(ranking.slice(-14));
+      renderGrid(gid);
+    });
+  }
+
+  function applyOptionToGame(option, gameId) {
+    games[gameId] = new Set(option);
+    renderGrid(gameId);
+  }
+
+  async function analyzeManualPlay() {
+    const manualRaw = document.getElementById('manualBasePlay').value;
+
+    const response = await fetch('/api/generate_from_manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ manual_play: manualRaw })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('generate_err_manual'));
+      return;
+    }
+
+    document.getElementById('manualSummary').innerText =
+      KA.f('generate_manual_summary', { confidence: data.manual.global_confidence, best: data.manual.best_probability });
+
+    const html = data.options.map((item, idx) => `
+      <div class="card" style="margin-top:10px;">
+        <h3>${KA.f('generate_manual_option', { index: idx + 1 })}</h3>
+        <div class="thermal-numbers" data-numbers="${item.play.join(',')}">${item.play.join(', ')}</div>
+        <p>${KA.f('generate_prob_line', { p10: item.prob_10_plus, p11: item.prob_11_plus, p12: item.prob_12_plus })}</p>
+        <p><strong>${KA.f('generate_confidence', { value: item.global_confidence })}</strong></p>
+        <button class="btn-edit" onclick='applyOptionToGame(${JSON.stringify(item.play)}, 1)'>${KA.f('generate_use_game', { index: 1 })}</button>
+        <button class="btn-edit" onclick='applyOptionToGame(${JSON.stringify(item.play)}, 2)'>${KA.f('generate_use_game', { index: 2 })}</button>
+        <button class="btn-edit" onclick='applyOptionToGame(${JSON.stringify(item.play)}, 3)'>${KA.f('generate_use_game', { index: 3 })}</button>
+      </div>
+    `).join('');
+
+    document.getElementById('manualOptionsWrap').innerHTML = html;
+    KA.renderThermalNodes(document.getElementById('manualOptionsWrap'));
+  }
+
+  renderGrid(1);
+  renderGrid(2);
+  renderGrid(3);
+  loadRanking();
+  KA.renderLegend('generateLegend');
+  document.addEventListener('ka:language-changed', () => {
+    KA.renderLegend('generateLegend');
+    document.getElementById('genInfo').innerText = KA.t('generate_info_default');
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 data-i18n="compare_title">Comparacion de Juegos</h1>
+<p data-i18n="compare_subtitle">Compara tickets y encuentra el que tiene mayor score</p>
+
+<div class="card">
+  <h3 data-i18n="compare_tickets_title">Tickets a comparar</h3>
+  <div id="ticketsWrap"></div>
+  <button class="btn-edit" onclick="addTicket()" data-i18n="compare_add_ticket">Agregar Ticket</button>
+</div>
+
+<br />
+
+<button class="btn-modern" onclick="compareAll()" data-i18n="compare_all">Comparar Todos los Tickets</button>
+
+<br /><br />
+
+<div class="card">
+  <h3 data-i18n="compare_results">Resultados</h3>
+  <div id="comparacionLegend"></div>
+  <div id="compareResults"></div>
+</div>
+
+<script>
+  Object.assign(KA.i18n.es, {
+    compare_title: "Comparacion de Juegos",
+    compare_subtitle: "Compara tickets y encuentra el que tiene mayor score",
+    compare_tickets_title: "Tickets a comparar",
+    compare_add_ticket: "Agregar Ticket",
+    compare_all: "Comparar Todos los Tickets",
+    compare_results: "Resultados",
+    compare_ticket: "Ticket {id}",
+    compare_clear: "Limpiar",
+    compare_err: "No se pudo comparar",
+    compare_top: "[TOP]",
+    compare_ticket_label: "Ticket:",
+    compare_prob_10: "Prob >=10 aciertos: {value}%",
+    compare_avg_rank: "Promedio ranking: {value}",
+    compare_global: "Score global: {value}",
+  });
+  Object.assign(KA.i18n.en, {
+    compare_title: "Play Comparison",
+    compare_subtitle: "Compare tickets and find the highest score",
+    compare_tickets_title: "Tickets to compare",
+    compare_add_ticket: "Add Ticket",
+    compare_all: "Compare All Tickets",
+    compare_results: "Results",
+    compare_ticket: "Ticket {id}",
+    compare_clear: "Clear",
+    compare_err: "Could not compare",
+    compare_top: "[TOP]",
+    compare_ticket_label: "Ticket:",
+    compare_prob_10: "Prob >=10 hits: {value}%",
+    compare_avg_rank: "Average rank: {value}",
+    compare_global: "Global score: {value}",
+  });
+
+  let ticketCount = 0;
+
+  function ticketHtml(id) {
+    return `
+      <div class="ticket-block card" style="margin:8px 0;">
+        <h3>${KA.f('compare_ticket', { id })}</h3>
+        <div id="ticketGrid${id}" class="number-grid"></div>
+        <p><span id="ticketCount${id}">0</span> / 14</p>
+        <button class="btn-edit" onclick="clearTicket(${id})">${KA.t('compare_clear')}</button>
+      </div>
+    `;
+  }
+
+  function addTicket() {
+    ticketCount += 1;
+    const wrap = document.getElementById('ticketsWrap');
+    wrap.insertAdjacentHTML('beforeend', ticketHtml(ticketCount));
+    window[`ticketSet${ticketCount}`] = new Set();
+    renderTicketGrid(ticketCount);
+  }
+
+  function renderTicketGrid(id) {
+    const set = window[`ticketSet${id}`];
+    const wrap = document.getElementById(`ticketGrid${id}`);
+    wrap.innerHTML = '';
+    for (let n = 1; n <= 25; n++) {
+      const active = set.has(n) ? 'active-number' : '';
+      wrap.insertAdjacentHTML('beforeend', `<button class="number-btn ${active}" onclick="toggleTicketNum(${id}, ${n})">${n}</button>`);
+    }
+    document.getElementById(`ticketCount${id}`).innerText = set.size;
+  }
+
+  function toggleTicketNum(id, n) {
+    const set = window[`ticketSet${id}`];
+    if (set.has(n)) set.delete(n);
+    else if (set.size < 14) set.add(n);
+    renderTicketGrid(id);
+  }
+
+  function clearTicket(id) {
+    window[`ticketSet${id}`].clear();
+    renderTicketGrid(id);
+  }
+
+  async function compareAll() {
+    const tickets = [];
+    for (let i = 1; i <= ticketCount; i++) {
+      const set = window[`ticketSet${i}`];
+      if (set && set.size) tickets.push([...set].sort((a, b) => a - b));
+    }
+
+    const response = await fetch('/api/compare_tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickets })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      await KA.uiAlert(data.error || KA.t('compare_err'));
+      return;
+    }
+
+    const html = data.results.map(r => `
+      <div class="card ${r.is_best ? 'best-card' : ''}" style="margin-bottom:10px;">
+        <h3>${r.name} ${r.is_best ? KA.t('compare_top') : ''}</h3>
+        <p>${KA.t('compare_ticket_label')}</p>
+        <div class="thermal-numbers" data-numbers="${r.ticket.join(',')}">${r.ticket.join(', ')}</div>
+        <p>${KA.f('compare_prob_10', { value: r.prob_10_plus })}</p>
+        <p>${KA.f('compare_avg_rank', { value: r.avg_rank })}</p>
+        <p><strong>${KA.f('compare_global', { value: r.global_score })}</strong></p>
+      </div>
+    `).join('');
+
+    document.getElementById('compareResults').innerHTML = html;
+    KA.renderThermalNodes(document.getElementById('compareResults'));
+  }
+
+  addTicket();
+  addTicket();
+  KA.renderLegend('comparacionLegend');
+  document.addEventListener('ka:language-changed', () => KA.renderLegend('comparacionLegend'));
+</script>
+{% endblock %}

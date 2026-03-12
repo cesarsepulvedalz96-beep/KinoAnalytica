@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 data-i18n="menu_settings">Configuracion</h1>
+<p data-i18n="settings_subtitle">Personaliza apariencia, idioma y comportamiento de la plataforma.</p>
+
+<div class="split-2">
+  <div class="card">
+    <h3 data-i18n="settings_appearance">Apariencia</h3>
+    <label data-i18n="settings_visual_theme">Tema visual</label>
+    <select id="settingTheme" class="input-modern">
+      <option value="corporate" data-i18n="settings_theme_corporate">Corporativo Claro</option>
+      <option value="dark" data-i18n="settings_theme_dark">Corporativo Oscuro</option>
+      <option value="night" data-i18n="settings_theme_night">Azul Noche</option>
+    </select>
+    <small data-i18n="settings_theme_note">Define la paleta general de la interfaz.</small>
+
+    <br /><br />
+
+    <label data-i18n="settings_language">Idioma</label>
+    <select id="settingLanguage" class="input-modern">
+      <option value="es" data-i18n="settings_lang_es">Espanol</option>
+      <option value="en" data-i18n="settings_lang_en">English</option>
+    </select>
+    <small data-i18n="settings_language_note">Cambia textos base del menu y etiquetas globales.</small>
+  </div>
+
+  <div class="card">
+    <h3 data-i18n="settings_experience">Experiencia</h3>
+
+    <label class="switch-row">
+      <input type="checkbox" id="settingCompact" />
+      <span data-i18n="settings_compact">Modo compacto</span>
+    </label>
+    <small data-i18n="settings_compact_note">Reduce espacios y alturas para mostrar mas informacion.</small>
+
+    <br /><br />
+
+    <label class="switch-row">
+      <input type="checkbox" id="settingReducedMotion" />
+      <span data-i18n="settings_reduce_motion">Reducir animaciones</span>
+    </label>
+    <small data-i18n="settings_reduce_motion_note">Desactiva transiciones para una experiencia mas estable.</small>
+
+    <br /><br />
+
+    <label class="switch-row">
+      <input type="checkbox" id="settingShowLegend" checked />
+      <span data-i18n="settings_show_legend">Mostrar leyenda termica</span>
+    </label>
+    <small data-i18n="settings_show_legend_note">Controla la visualizacion de descripcion caliente/frio.</small>
+  </div>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="settings_legend_desc">Descripcion de Escala Termica</h3>
+  <div id="settingsLegend"></div>
+</div>
+
+<br />
+
+<div class="card">
+  <h3 data-i18n="settings_actions">Acciones</h3>
+  <button class="btn-modern" onclick="saveSettingsNow()" data-i18n="settings_save">Guardar Ajustes</button>
+  <button class="btn-edit" onclick="resetSettingsNow()" data-i18n="settings_reset">Restablecer</button>
+  <p id="settingsStatus"></p>
+</div>
+
+<script>
+  Object.assign(KA.i18n.es, {
+    settings_subtitle: "Personaliza apariencia, idioma y comportamiento de la plataforma.",
+    settings_appearance: "Apariencia",
+    settings_visual_theme: "Tema visual",
+    settings_theme_corporate: "Corporativo Claro",
+    settings_theme_dark: "Corporativo Oscuro",
+    settings_theme_night: "Azul Noche",
+    settings_theme_note: "Define la paleta general de la interfaz.",
+    settings_language: "Idioma",
+    settings_lang_es: "Espanol",
+    settings_lang_en: "English",
+    settings_language_note: "Cambia textos base del menu y etiquetas globales.",
+    settings_experience: "Experiencia",
+    settings_compact: "Modo compacto",
+    settings_compact_note: "Reduce espacios y alturas para mostrar mas informacion.",
+    settings_reduce_motion: "Reducir animaciones",
+    settings_reduce_motion_note: "Desactiva transiciones para una experiencia mas estable.",
+    settings_show_legend: "Mostrar leyenda termica",
+    settings_show_legend_note: "Controla la visualizacion de descripcion caliente/frio.",
+    settings_legend_desc: "Descripcion de Escala Termica",
+    settings_actions: "Acciones",
+    settings_save: "Guardar Ajustes",
+    settings_reset: "Restablecer",
+    settings_saved: "Ajustes guardados correctamente.",
+    settings_reset_done: "Ajustes restablecidos.",
+  });
+  Object.assign(KA.i18n.en, {
+    settings_subtitle: "Customize appearance, language and platform behavior.",
+    settings_appearance: "Appearance",
+    settings_visual_theme: "Visual theme",
+    settings_theme_corporate: "Corporate Light",
+    settings_theme_dark: "Corporate Dark",
+    settings_theme_night: "Night Blue",
+    settings_theme_note: "Defines the interface color palette.",
+    settings_language: "Language",
+    settings_lang_es: "Spanish",
+    settings_lang_en: "English",
+    settings_language_note: "Changes menu and global labels.",
+    settings_experience: "Experience",
+    settings_compact: "Compact mode",
+    settings_compact_note: "Reduces spacing to show more information.",
+    settings_reduce_motion: "Reduce motion",
+    settings_reduce_motion_note: "Disables transitions for a steadier experience.",
+    settings_show_legend: "Show thermal legend",
+    settings_show_legend_note: "Controls hot/cold description visibility.",
+    settings_legend_desc: "Thermal Scale Description",
+    settings_actions: "Actions",
+    settings_save: "Save Settings",
+    settings_reset: "Reset",
+    settings_saved: "Settings saved successfully.",
+    settings_reset_done: "Settings reset.",
+  });
+
+  function loadSettingsUI() {
+    const s = KA.getSettings();
+    document.getElementById('settingTheme').value = s.theme || 'corporate';
+    document.getElementById('settingLanguage').value = s.language || 'es';
+    document.getElementById('settingCompact').checked = !!s.compact;
+    document.getElementById('settingReducedMotion').checked = !!s.reducedMotion;
+    document.getElementById('settingShowLegend').checked = s.showLegend !== false;
+    KA.renderLegend('settingsLegend');
+  }
+
+  function saveSettingsNow() {
+    const settings = {
+      theme: document.getElementById('settingTheme').value,
+      language: document.getElementById('settingLanguage').value,
+      compact: document.getElementById('settingCompact').checked,
+      reducedMotion: document.getElementById('settingReducedMotion').checked,
+      showLegend: document.getElementById('settingShowLegend').checked,
+    };
+
+    KA.saveSettings(settings);
+    KA.applySettings();
+    KA.renderLegend('settingsLegend');
+
+    document.getElementById('settingsStatus').innerText = KA.t('settings_saved');
+  }
+
+  function resetSettingsNow() {
+    KA.saveSettings({ theme: 'corporate', language: 'es', compact: false, reducedMotion: false, showLegend: true });
+    KA.applySettings();
+    loadSettingsUI();
+    document.getElementById('settingsStatus').innerText = KA.t('settings_reset_done');
+  }
+
+  loadSettingsUI();
+</script>
+
+{% endblock %}
